@@ -10,6 +10,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.persistence.OptimisticLockException;
 import javax.persistence.PersistenceException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -45,8 +46,8 @@ public class HibernateUtilTest {
         } catch (Throwable ex) {
             throw new ExceptionInInitializerError(ex);
         }
-
-        lists = jsonGetRequest("https://danepubliczne.imgw.pl/api/data/synop");
+        String urlQueryString = "https://danepubliczne.imgw.pl/api/data/synop";
+        lists = jsonGetRequest(urlQueryString);
         for( Meteorology o : lists ) {
             addMeteorology(session, o);
         }
@@ -112,6 +113,12 @@ public class HibernateUtilTest {
         }
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void DeleteNotExistedRecordTest() {
+        int deleteId = 5;
+        deleteMeteorology(session, deleteId);
+    }
+
     @Test
     public void CheckNullFieldTest() throws ParseException {
         Meteorology nullMeteorology = new Meteorology();
@@ -127,8 +134,10 @@ public class HibernateUtilTest {
                 Date data_pomiaru = sdf.parse("2018-03-04 12");
                 nullMeteorology.setData_pomiaru(data_pomiaru);
                 addMeteorology(session, nullMeteorology);
+                return;
             }
         }
+        fail();
     }
 
     @Test(expected=PersistenceException.class)
@@ -215,6 +224,19 @@ public class HibernateUtilTest {
                 assertEquals(cisnienie, meteorology.getCisnienie());
             }
         }
+    }
+
+    @Test(expected = OptimisticLockException.class)
+    public void UpdateNotExistedRecordTest() throws ParseException {
+        int updateId = 5;
+        String stacja = "Lomza";
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH");
+        Date data_pomiaru = sdf.parse("2018-04-04 12");
+        Meteorology meteorology = new Meteorology();
+        meteorology.setId_stacji(updateId);
+        meteorology.setStacja(stacja);
+        meteorology.setData_pomiaru(data_pomiaru);
+        updateMeteorology(session, meteorology);
     }
 
 }

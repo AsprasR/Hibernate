@@ -12,6 +12,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import javax.persistence.OptimisticLockException;
 import javax.persistence.PersistenceException;
 
 class HibernateUtil {
@@ -87,6 +88,10 @@ class HibernateUtil {
             tx = session.beginTransaction();
             session.update(meteorology);
             tx.commit();
+        } catch( OptimisticLockException e ) {
+            if( tx != null )
+                tx.rollback();
+            throw e;
         } catch (HibernateException e) {
             if ( tx != null )
                 tx.rollback();
@@ -106,8 +111,13 @@ class HibernateUtil {
             session.delete(meteorology);
             tx.commit();
         } catch (HibernateException e) {
-            if (tx != null) tx.rollback();
+            if (tx != null)
+                tx.rollback();
             e.printStackTrace();
+        } catch( IllegalArgumentException e ) {
+            if (tx != null )
+                tx.rollback();
+            throw e;
         }
     }
 }
