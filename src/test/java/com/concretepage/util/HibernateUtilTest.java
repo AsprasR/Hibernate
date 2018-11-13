@@ -10,6 +10,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.persistence.PersistenceException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -31,7 +32,7 @@ public class HibernateUtilTest {
             prop.setProperty("hibernate.connection.password", "root");
             prop.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
             prop.setProperty("hibernate.connection.driver_class", "org.postgresql.Driver");
-            prop.setProperty("hibernate.hbm2ddl.auto", "update");
+            prop.setProperty("hibernate.hbm2ddl.auto", "create");
             prop.setProperty("hibernate.connection.CharSet", "utf8");
             prop.setProperty("hibernate.connection.characterEncoding", "utf8" );
             prop.setProperty("hibernate.connection.useUnicode", "true");
@@ -44,7 +45,7 @@ public class HibernateUtilTest {
         } catch (Throwable ex) {
             throw new ExceptionInInitializerError(ex);
         }
-        doQuery(session, "delete from Meteorology");
+
         lists = jsonGetRequest("https://danepubliczne.imgw.pl/api/data/synop");
         for( Meteorology o : lists ) {
             addMeteorology(session, o);
@@ -58,15 +59,45 @@ public class HibernateUtilTest {
     }
 
     @Test
-    public void AddQueryTest() {
+    public void AddJsonQueryTest() {
         int resultNumber = getNumberOfMeteo(session);
         assertEquals(lists.size(), resultNumber);
     }
+
+    @Test
+    public void AddQueryTest() throws ParseException {
+        int id_stacji = 2500;
+        String stacja = "Lomza";
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH");
+        Date data_pomiaru = sdf.parse("2018-12-12 12" );
+
+        Meteorology meteorology = new Meteorology();
+        meteorology.setId_stacji(id_stacji);
+        meteorology.setStacja(stacja);
+        meteorology.setData_pomiaru(data_pomiaru);
+
+        addMeteorology(session, meteorology);
+        lists.add(meteorology);
+
+        List<Meteorology> actualResult = listOfMeteorologies(session);
+
+        assertEquals(lists.size(), getNumberOfMeteo(session));
+        assertTrue(actualResult.contains(meteorology));
+
+        for( Meteorology meteo : actualResult ) {
+            if( meteo.getId_stacji() == meteorology.getId_stacji() ) {
+                assertEquals(id_stacji, meteo.getId_stacji());
+                assertEquals(stacja, meteo.getStacja());
+                assertEquals(data_pomiaru, meteo.getData_pomiaru());
+            }
+        }
+    }
+
     @Test
     public void SelectQueryTest() {
-        List expectedResult = listOfMeteorologies(session);
-        Iterator<Meteorology> expectedIterator = expectedResult.iterator();
-        Iterator<Meteorology> actualIterator = lists.iterator();
+        List<Meteorology> actualResult = listOfMeteorologies(session);
+        Iterator<Meteorology> expectedIterator = lists.iterator();
+        Iterator<Meteorology> actualIterator = actualResult.iterator();
         while (expectedIterator.hasNext() && actualIterator.hasNext())
         {
             Meteorology expect = expectedIterator.next();
@@ -80,25 +111,76 @@ public class HibernateUtilTest {
         int deleteId = 12295;
         deleteMeteorology(session, deleteId);
         for (Iterator iterator = lists.iterator(); iterator.hasNext(); ) {
-            Meteorology meteo = (Meteorology) iterator.next();
-            if( meteo.getId_stacji() == deleteId ) {
+            Meteorology meteorology = (Meteorology) iterator.next();
+            if( meteorology.getId_stacji() == deleteId ) {
                 iterator.remove();
             }
         }
         int resultNumber = getNumberOfMeteo(session);
         assertEquals(lists.size(), resultNumber);
-        List expectedResult = listOfMeteorologies(session);
-        for (Iterator iterator = expectedResult.iterator(); iterator.hasNext(); ) {
-            Meteorology meteorology = (Meteorology) iterator.next();
+        List<Meteorology> expectedResult = listOfMeteorologies(session);
+        for( Meteorology meteorology : expectedResult ) {
             assertNotEquals(meteorology.getId_stacji(), 12295);
         }
     }
 
-    @Test( expected = PropertyValueException.class )
-    public void CheckNullTest() {
-        Meteorology actual = new Meteorology();
-        actual.setId_stacji(5000);
-        addMeteorology(session, actual);
+    @Test
+    public void CheckNullTest() throws ParseException {
+        Meteorology nullMeteorology = new Meteorology();
+        try {
+            nullMeteorology.setId_stacji(5000);
+            addMeteorology(session, nullMeteorology);
+        } catch( PropertyValueException e ) {
+            try {
+                nullMeteorology.setStacja("Lomza");
+                addMeteorology(session, nullMeteorology);
+            } catch( PropertyValueException f ) {
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH");
+                Date data_pomiaru = sdf.parse("2018-03-04 12");
+                nullMeteorology.setData_pomiaru(data_pomiaru);
+                addMeteorology(session, nullMeteorology);
+            }
+        }
+    }
+
+    @Test(expected=PersistenceException.class)
+    public void UpdateNullTest() {
+        int updateId = 12295;
+        Meteorology meteo = null;
+
+        for( Meteorology meteorology : lists ) {
+            if( meteorology.getId_stacji() ==  updateId ) {
+                meteorology.setTemperatura(null);
+                meteorology.setPredkosc_wiatru(null);
+                meteorology.setKierunek_wiatru(null);
+                meteorology.setWilgotnosc_wzgledna(null);
+                meteorology.setSuma_opadu(null);
+                meteorology.setCisnienie(null);
+                meteo = meteorology;
+                updateMeteorology(session, meteorology);
+            }
+        }
+        List<Meteorology> actualResult = listOfMeteorologies(session);
+        assertTrue(actualResult.contains(meteo));
+        for ( Meteorology meteorology : actualResult ) {
+            if( meteorology.getId_stacji() == updateId ) {
+                assertNull(meteorology.getTemperatura());
+                assertNull(meteorology.getPredkosc_wiatru());
+                assertNull(meteorology.getKierunek_wiatru());
+                assertNull(meteorology.getWilgotnosc_wzgledna());
+                assertNull(meteorology.getSuma_opadu());
+                assertNull(meteorology.getCisnienie());
+            }
+        }
+        assertNotNull(meteo);
+        try {
+            meteo.setStacja(null);
+            updateMeteorology(session, meteo);
+        } catch( PersistenceException e ) {
+            meteo.setStacja("Lomza");
+            meteo.setData_pomiaru(null);
+            updateMeteorology(session, meteo);
+        }
     }
 
     @Test
@@ -113,30 +195,30 @@ public class HibernateUtilTest {
         Float wilgotnosc_wzgledna = (float) 19.9;
         Double suma_opadu = 0.001;
         Float cisnienie = (float) 1220.5;
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH");
+        Date date = sdf.parse(data_pomiaru + " " +  godzina_pomiaru);
+        Meteorology meteo = null;
 
-        for (Iterator iterator = lists.iterator(); iterator.hasNext(); ) {
-            Meteorology meteo = (Meteorology) iterator.next();
-            if( meteo.getId_stacji() ==  updateId ) {
-                meteo.setStacja(stacja);
-                meteo.setData_pomiaru(sdf.parse(data_pomiaru));
-                meteo.setGodzina_pomiaru(godzina_pomiaru);
-                meteo.setTemperatura(temperatura);
-                meteo.setPredkosc_wiatru(predkosc_wiatru);
-                meteo.setKierunek_wiatru(kierunek_wiatru);
-                meteo.setWilgotnosc_wzgledna(wilgotnosc_wzgledna);
-                meteo.setSuma_opadu(suma_opadu);
-                meteo.setCisnienie(cisnienie);
-                updateMeteorology(session, meteo);
+        for( Meteorology meteorology : lists ) {
+            if( meteorology.getId_stacji() ==  updateId ) {
+                meteorology.setStacja(stacja);
+                meteorology.setData_pomiaru(date);
+                meteorology.setTemperatura(temperatura);
+                meteorology.setPredkosc_wiatru(predkosc_wiatru);
+                meteorology.setKierunek_wiatru(kierunek_wiatru);
+                meteorology.setWilgotnosc_wzgledna(wilgotnosc_wzgledna);
+                meteorology.setSuma_opadu(suma_opadu);
+                meteorology.setCisnienie(cisnienie);
+                meteo = meteorology;
+                updateMeteorology(session, meteorology);
             }
         }
-        List expectedResult = listOfMeteorologies(session);
-        for (Iterator iterator = expectedResult.iterator(); iterator.hasNext(); ) {
-            Meteorology meteorology = (Meteorology) iterator.next();
-            if(meteorology.getId_stacji() == updateId ) {
+        List<Meteorology> actualResult = listOfMeteorologies(session);
+        assertTrue(actualResult.contains(meteo));
+        for ( Meteorology meteorology : actualResult ) {
+            if( meteorology.getId_stacji() == updateId ) {
                 assertEquals(stacja, meteorology.getStacja());
-                assertEquals(sdf.parse(data_pomiaru), meteorology.getData_pomiaru());
-                assertEquals(godzina_pomiaru, meteorology.getGodzina_pomiaru());
+                assertEquals(date, meteorology.getData_pomiaru());
                 assertEquals(temperatura, meteorology.getTemperatura());
                 assertEquals(predkosc_wiatru, meteorology.getPredkosc_wiatru());
                 assertEquals(kierunek_wiatru, meteorology.getKierunek_wiatru());

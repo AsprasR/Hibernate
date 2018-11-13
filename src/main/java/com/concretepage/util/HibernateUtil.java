@@ -8,15 +8,16 @@ import java.util.*;
 
 import com.concretepage.persistence.Meteorology;
 import org.hibernate.*;
-import org.hibernate.query.Query;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import javax.persistence.PersistenceException;
+
 class HibernateUtil {
 
     static TreeSet<Meteorology> jsonGetRequest(String urlQueryString) {
-        TreeSet<Meteorology> listsOfMeteo = new TreeSet<Meteorology>();
+        TreeSet<Meteorology> listsOfMeteo = new TreeSet<>();
         try {
             URL url = new URL(urlQueryString);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -41,24 +42,19 @@ class HibernateUtil {
                 JSONObject object = jsonArray.getJSONObject(i);
                 int id_stacji = object.getInt("id_stacji");
                 String stacja = object.getString("stacja");
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-                Date data_pomiaru = sdf.parse(object.getString("data_pomiaru"));
-                int godzina_pomiaru = object.getInt("godzina_pomiaru");
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH");
+                Date data_pomiaru = sdf.parse(object.getString("data_pomiaru") + " " + object.getInt("godzina_pomiaru"));
                 Float temperatura = object.isNull("temperatura") ? null : object.getFloat("temperatura");
                 Integer predkosc_wiatru = object.isNull("predkosc_wiatru") ? null : object.getInt("predkosc_wiatru");
                 Integer kierunek_wiatru = object.isNull("kierunek_wiatru") ? null : object.getInt("kierunek_wiatru");
                 Float wilgotnosc_wzgledna = object.isNull("wilgotnosc_wzgledna") ? null : object.getFloat("wilgotnosc_wzgledna");
                 Double suma_opadu = object.isNull("suma_opadu") ? null : object.getDouble("suma_opadu");
                 Float cisnienie = object.isNull("cisnienie") ? null : object.getFloat("cisnienie") ;
-                listsOfMeteo.add(new Meteorology(id_stacji, stacja, data_pomiaru, godzina_pomiaru,
-                       temperatura, predkosc_wiatru, kierunek_wiatru, wilgotnosc_wzgledna,
+                listsOfMeteo.add(new Meteorology(id_stacji, stacja, data_pomiaru, temperatura,
+                        predkosc_wiatru, kierunek_wiatru, wilgotnosc_wzgledna,
                         suma_opadu, cisnienie));
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch( JSONException e ) {
-            e.printStackTrace();
-        } catch (ParseException e) {
+        } catch (IOException | JSONException | ParseException e) {
             e.printStackTrace();
         }
         return listsOfMeteo;
@@ -96,7 +92,8 @@ class HibernateUtil {
         return size;
     }
 
-    static List listOfMeteorologies( Session session ) {
+    @SuppressWarnings("unchecked")
+    static List<Meteorology> listOfMeteorologies(Session session ) {
         return session.createQuery("FROM Meteorology Order by id_stacji").list();
     }
 
@@ -104,14 +101,16 @@ class HibernateUtil {
         Transaction tx = null;
         try {
             tx = session.beginTransaction();
-            Meteorology meteo = session.get(Meteorology.class, meteorology.getId_stacji());
-            meteo.setMeteorology(meteorology);
-            session.update(meteo);
+            session.update(meteorology);
             tx.commit();
         } catch (HibernateException e) {
             if ( tx != null )
                 tx.rollback();
             e.printStackTrace();
+        } catch( PersistenceException e ) {
+            if( tx != null )
+                tx.rollback();
+            throw e;
         }
     }
 
@@ -124,21 +123,6 @@ class HibernateUtil {
             tx.commit();
         } catch (HibernateException e) {
             if (tx != null) tx.rollback();
-            e.printStackTrace();
-        }
-    }
-
-    static void doQuery(Session session, String query) {
-        Transaction tx = null;
-        try {
-            tx = session.beginTransaction();
-            String hql = String.format(query);
-            Query createQuery = session.createQuery(hql);
-            createQuery.executeUpdate();
-            tx.commit();
-        } catch (HibernateException e) {
-            if (tx != null)
-                tx.rollback();
             e.printStackTrace();
         }
     }

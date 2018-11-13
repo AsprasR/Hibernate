@@ -6,8 +6,6 @@ import java.util.Date;
 @Entity
 @Table(name="Meteorology")//, schema = "targetSchemaName")
 public class Meteorology implements Comparable<Meteorology> {
-    @Transient
-    private Meteorology meteorology;
     @Id
     @Column(name = "id_stacji", nullable = false)
     private int id_stacji;
@@ -15,12 +13,9 @@ public class Meteorology implements Comparable<Meteorology> {
     @Column(name="stacja", nullable = false)
     private String stacja;
 
-    @Temporal(TemporalType.DATE)
+    @Temporal(TemporalType.TIMESTAMP)
     @Column(name="data_pomiaru", nullable = false)
     private Date data_pomiaru;
-
-    @Column(name="godzina_pomiaru", nullable = false)
-    private int godzina_pomiaru;
 
     @Column(name="temperatura")
     private Float temperatura;
@@ -42,20 +37,18 @@ public class Meteorology implements Comparable<Meteorology> {
 
     public Meteorology(){}
 
-    public Meteorology(int id_stacji, String stacja, Date data_pomiaru, int godzina_pomiaru,
-                       Float temperatura, Integer predkosc_wiatru, Integer kierunek_wiatru, Float wilgotnosc_wzgledna,
+    public Meteorology(int id_stacji, String stacja, Date data_pomiaru, Float temperatura,
+                       Integer predkosc_wiatru, Integer kierunek_wiatru, Float wilgotnosc_wzgledna,
                        Double suma_opadu, Float cisnienie) {
         this.setId_stacji(id_stacji);
         this.setStacja(stacja);
         this.setData_pomiaru(data_pomiaru);
-        this.setGodzina_pomiaru(godzina_pomiaru);
         this.setTemperatura(temperatura);
         this.setPredkosc_wiatru(predkosc_wiatru);
         this.setKierunek_wiatru(kierunek_wiatru);
         this.setWilgotnosc_wzgledna(wilgotnosc_wzgledna);
         this.setSuma_opadu(suma_opadu);
         this.setCisnienie(cisnienie);
-        meteorology = this;
     }
 
     public int getId_stacji() {
@@ -80,14 +73,6 @@ public class Meteorology implements Comparable<Meteorology> {
 
     public void setData_pomiaru(Date data_pomiaru) {
         this.data_pomiaru = data_pomiaru;
-    }
-
-    public int getGodzina_pomiaru() {
-        return godzina_pomiaru;
-    }
-
-    public void setGodzina_pomiaru(int godzina_pomiaru) {
-        this.godzina_pomiaru = godzina_pomiaru;
     }
 
     public Float getTemperatura() {
@@ -136,14 +121,6 @@ public class Meteorology implements Comparable<Meteorology> {
 
     public void setCisnienie(Float cisnienie) {
         this.cisnienie = cisnienie;
-    }
-
-    public void setMeteorology( Meteorology meteorology) {
-        this.meteorology = meteorology;
-    }
-
-    public Meteorology getMeteorology() {
-        return meteorology;
     }
 
     public int compareTo(Meteorology o) {
