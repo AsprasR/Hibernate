@@ -60,8 +60,10 @@ public class HibernateUtilTest {
 
     @Test
     public void AddJsonQueryTest() {
-        int resultNumber = getNumberOfMeteo(session);
-        assertEquals(lists.size(), resultNumber);
+        List<Meteorology> actualResult = listOfMeteorologies(session);
+
+        assertEquals(lists.size(), actualResult.size());
+        assertTrue(actualResult.containsAll(lists));
     }
 
     @Test
@@ -81,7 +83,7 @@ public class HibernateUtilTest {
 
         List<Meteorology> actualResult = listOfMeteorologies(session);
 
-        assertEquals(lists.size(), getNumberOfMeteo(session));
+        assertEquals(lists.size(), actualResult.size());
         assertTrue(actualResult.contains(meteorology));
 
         for( Meteorology meteo : actualResult ) {
@@ -90,19 +92,6 @@ public class HibernateUtilTest {
                 assertEquals(stacja, meteo.getStacja());
                 assertEquals(data_pomiaru, meteo.getData_pomiaru());
             }
-        }
-    }
-
-    @Test
-    public void SelectQueryTest() {
-        List<Meteorology> actualResult = listOfMeteorologies(session);
-        Iterator<Meteorology> expectedIterator = lists.iterator();
-        Iterator<Meteorology> actualIterator = actualResult.iterator();
-        while (expectedIterator.hasNext() && actualIterator.hasNext())
-        {
-            Meteorology expect = expectedIterator.next();
-            Meteorology actual = actualIterator.next();
-            assertEquals(expect, actual);
         }
     }
 
@@ -116,16 +105,15 @@ public class HibernateUtilTest {
                 iterator.remove();
             }
         }
-        int resultNumber = getNumberOfMeteo(session);
-        assertEquals(lists.size(), resultNumber);
         List<Meteorology> expectedResult = listOfMeteorologies(session);
+        assertEquals(lists.size(), expectedResult.size());
         for( Meteorology meteorology : expectedResult ) {
             assertNotEquals(meteorology.getId_stacji(), 12295);
         }
     }
 
     @Test
-    public void CheckNullTest() throws ParseException {
+    public void CheckNullFieldTest() throws ParseException {
         Meteorology nullMeteorology = new Meteorology();
         try {
             nullMeteorology.setId_stacji(5000);
@@ -144,7 +132,7 @@ public class HibernateUtilTest {
     }
 
     @Test(expected=PersistenceException.class)
-    public void UpdateNullTest() {
+    public void UpdateToNullTest() {
         int updateId = 12295;
         Meteorology meteo = null;
 

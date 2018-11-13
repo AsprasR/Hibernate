@@ -77,21 +77,6 @@ class HibernateUtil {
         }
     }
 
-    static int getNumberOfMeteo( Session session ) {
-        Transaction tx = null;
-        int size = 0;
-        try {
-            tx = session.beginTransaction();
-            List meteo = session.createQuery("FROM Meteorology").list();
-            size = meteo.size();
-        } catch (HibernateException e) {
-            if (tx != null)
-                tx.rollback();
-            e.printStackTrace();
-        }
-        return size;
-    }
-
     static List<Meteorology> listOfMeteorologies(Session session ) {
         return session.createQuery("FROM Meteorology Order by id_stacji", Meteorology.class).list();
     }
