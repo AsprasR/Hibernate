@@ -92,9 +92,8 @@ class HibernateUtil {
         return size;
     }
 
-    @SuppressWarnings("unchecked")
     static List<Meteorology> listOfMeteorologies(Session session ) {
-        return session.createQuery("FROM Meteorology Order by id_stacji").list();
+        return session.createQuery("FROM Meteorology Order by id_stacji", Meteorology.class).list();
     }
 
     static void updateMeteorology(Session session, Meteorology meteorology ){
